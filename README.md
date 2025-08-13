@@ -4,7 +4,7 @@ SCT's fork of popular applications, provided by [Bitnami](https://bitnami.com), 
 
 ## Why this Fork Exists
 
-This fork exists as a means for our organization to remain operational after Bitnami licensing changes. As a smaller organization, SCT cannot absorb the licensing cost for the Bitnami Secure Images Initiative, as we are only using a small subset of the functionality. We will therefore work to build these containers on our own and publish for our own use. We are grateful to Bitnami for leaving the source available for organizations like ours to undertake the process, rather than losing access entirely. We will continue to hope for a licensing option that allows us to purchase the product, and we will continue to contribute upstream where opportunities arise.
+This fork exists as a means for our organization to remain operational after Bitnami licensing changes. As a smaller organization, SCT cannot absorb the licensing cost for the Bitnami Secure Images Initiative, as we are only using a small subset of the functionality. We will therefore work to build these charts on our own and publish for our own use. We are grateful to Bitnami for leaving the source available for organizations like ours to undertake this process, rather than losing access entirely. We will continue to hope for a licensing option that allows us to purchase the product, and we will continue to contribute upstream where opportunities arise.
 
 ## ⚠️ Changes to the Bitnami Catalog
 
