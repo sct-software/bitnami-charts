@@ -140,7 +140,7 @@ jobs:
       - name: Push chart to registry
         if: steps.check-version.outputs.exists == 'false'
         run: |
-          chart_name="${{ steps.chart-info.outputs.name }}"
+          chart_name="bitnami-chart-${{ steps.chart-info.outputs.name }}"
           chart_version="${{ steps.chart-info.outputs.version }}"
           registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}"
           
