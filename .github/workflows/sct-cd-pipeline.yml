@@ -65,12 +65,12 @@ jobs:
           echo "Built chart: ${{ steps.chart-info.outputs.name }}"
 
   publish-charts:
-    needs: [discover-charts, build-charts]
+    needs: [build-charts]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
-        chart: ${{ fromJson(needs.discover-charts.outputs.charts) }}
+        chart: ["bitnami/postgresql", "bitnami/redis-cluster", "bitnami/minio"]
       fail-fast: false
       max-parallel: 5
     steps:
@@ -146,7 +146,7 @@ jobs:
           echo "🏷️  Version: ${{ steps.chart-info.outputs.version }}"
 
   summary:
-    needs: [discover-charts, build-charts, publish-charts]
+    needs: [build-charts, publish-charts]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -155,7 +155,6 @@ jobs:
           echo "## Daily Helm Chart Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📅 **Date**: $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "📊 **Total Charts**: $(echo '${{ needs.discover-charts.outputs.charts }}' | jq length)" >> $GITHUB_STEP_SUMMARY
           echo "�️  **Build Status**: ${{ needs.build-charts.result }}" >> $GITHUB_STEP_SUMMARY
           echo "🚀 **Publish Status**: ${{ needs.publish-charts.result }}" >> $GITHUB_STEP_SUMMARY
           echo "📂 **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
