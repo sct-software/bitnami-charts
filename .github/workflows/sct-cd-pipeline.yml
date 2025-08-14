@@ -9,16 +9,28 @@ on:
     branches: ["main"]
   push:
     branches: ["main"]        
+
 env:
   REGISTRY: ghcr.io
   REGISTRY_NAMESPACE: ${{ github.repository_owner }}
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.set-charts.outputs.charts }}
+    steps:
+      - name: Set charts list
+        id: set-charts
+        run: |
+          echo 'charts=["bitnami/postgresql", "bitnami/redis-cluster", "bitnami/minio"]' >> $GITHUB_OUTPUT
+
   build-charts:
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        chart: ["bitnami/postgresql", "bitnami/redis-cluster", "bitnami/minio"]
+        chart: ${{ fromJson(needs.setup.outputs.charts) }}
       fail-fast: false
       max-parallel: 5
     outputs:
@@ -65,12 +77,12 @@ jobs:
           echo "Built chart: ${{ steps.chart-info.outputs.name }}"
 
   publish-charts:
-    needs: [build-charts]
+    needs: [setup, build-charts]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
-        chart: ["bitnami/postgresql", "bitnami/redis-cluster", "bitnami/minio"]
+        chart: ${{ fromJson(needs.setup.outputs.charts) }}
       fail-fast: false
       max-parallel: 5
     steps:
@@ -146,7 +158,7 @@ jobs:
           echo "🏷️  Version: ${{ steps.chart-info.outputs.version }}"
 
   summary:
-    needs: [build-charts, publish-charts]
+    needs: [setup, build-charts, publish-charts]
     runs-on: ubuntu-latest
     if: always()
     steps:
