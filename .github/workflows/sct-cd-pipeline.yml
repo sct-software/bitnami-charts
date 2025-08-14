@@ -1,4 +1,4 @@
-name: Daily Helm Chart Build and Publish
+name: SCT CD Pipeline
 
 on:
   schedule:
