@@ -59,7 +59,7 @@ jobs:
 
       - name: Package Helm chart
         run: |
-          chart_path="${{ steps.chart-info.outputs.path }}"
+          chart_path="bitnami-chart-${{ steps.chart-info.outputs.path }}"
           helm dependency update "$chart_path"
           helm package "$chart_path" --destination ./packages
 
