@@ -1,0 +1,185 @@
+name: SCT CD Pipeline
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # Allow manual triggering
+  pull_request:
+    branches: ["main"]
+  push:
+    branches: ["main"]        
+
+env:
+  REGISTRY: ghcr.io
+  REGISTRY_NAMESPACE: ${{ github.repository_owner }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      charts: ${{ steps.set-charts.outputs.charts }}
+    steps:
+      - name: Set charts list
+        id: set-charts
+        run: |
+          echo 'charts=["postgresql", "redis-cluster", "minio"]' >> $GITHUB_OUTPUT
+
+  build-charts:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.setup.outputs.charts) }}
+      fail-fast: false
+      max-parallel: 5
+    outputs:
+      charts-built: ${{ steps.set-outputs.outputs.charts-built }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Extract chart info
+        id: chart-info
+        run: |
+          chart_path="bitnami/${{ matrix.chart }}"
+          chart_name=$(basename "$chart_path")
+          chart_version=$(yq eval '.version' "$chart_path/Chart.yaml")
+          app_version=$(yq eval '.appVersion' "$chart_path/Chart.yaml")
+          
+          echo "name=$chart_name" >> $GITHUB_OUTPUT
+          echo "version=$chart_version" >> $GITHUB_OUTPUT
+          echo "app-version=$app_version" >> $GITHUB_OUTPUT
+          echo "path=$chart_path" >> $GITHUB_OUTPUT
+
+      - name: Package Helm chart
+        run: |
+          chart_path="${{ steps.chart-info.outputs.path }}"
+          helm dependency update "$chart_path"
+          helm package "$chart_path" --destination ./packages
+
+      - name: Upload chart package
+        uses: actions/upload-artifact@v4
+        with:
+          name: bitnami-chart-${{ steps.chart-info.outputs.name }}
+          path: ./packages/${{ steps.chart-info.outputs.name }}-${{ steps.chart-info.outputs.version }}.tgz
+          retention-days: 1
+
+      - name: Set outputs for built charts
+        id: set-outputs
+        run: |
+          echo "charts-built=true" >> $GITHUB_OUTPUT
+          echo "Built chart: ${{ steps.chart-info.outputs.name }}"
+
+  publish-charts:
+    needs: [setup, build-charts]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.setup.outputs.charts) }}
+      fail-fast: false
+      max-parallel: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract chart info
+        id: chart-info
+        run: |
+          chart_path="bitnami/${{ matrix.chart }}"
+          chart_name=$(basename "$chart_path")
+          chart_version=$(yq eval '.version' "$chart_path/Chart.yaml")
+          app_version=$(yq eval '.appVersion' "$chart_path/Chart.yaml")
+          
+          echo "name=$chart_name" >> $GITHUB_OUTPUT
+          echo "version=$chart_version" >> $GITHUB_OUTPUT
+          echo "app-version=$app_version" >> $GITHUB_OUTPUT
+          echo "path=$chart_path" >> $GITHUB_OUTPUT
+
+      - name: Check if chart version already exists
+        id: check-version
+        run: |
+          chart_name="${{ steps.chart-info.outputs.name }}"
+          chart_version="${{ steps.chart-info.outputs.version }}"
+          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/bitnami-chart"
+          
+          # Check if this version already exists
+          if helm show chart "oci://$registry_url" --version "$chart_version" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Chart $chart_name:$chart_version already exists, skipping..."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Chart $chart_name:$chart_version does not exist, will publish..."
+          fi
+
+      - name: Download chart package
+        if: steps.check-version.outputs.exists == 'false'
+        uses: actions/download-artifact@v4
+        with:
+          name: bitnami-chart-${{ steps.chart-info.outputs.name }}
+          path: ./packages
+
+      - name: Push chart to registry
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          chart_name="${{ steps.chart-info.outputs.name }}"
+          chart_version="${{ steps.chart-info.outputs.version }}"
+          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/bitnami-chart"
+          
+          # Push the packaged chart
+          helm push "./packages/${{ steps.chart-info.outputs.name }}-$chart_version.tgz" "oci://$registry_url"
+
+      - name: Update chart annotation
+        if: steps.check-version.outputs.exists == 'false'
+        run: |
+          chart_name="${{ steps.chart-info.outputs.name }}"
+          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/bitnami-chart"
+          
+          echo "✅ Published: $chart_name"
+          echo "📦 Registry: oci://$registry_url"
+          echo "🏷️  Version: ${{ steps.chart-info.outputs.version }}"
+
+  summary:
+    needs: [setup, build-charts, publish-charts]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Daily Helm Chart Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📅 **Date**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "�️  **Build Status**: ${{ needs.build-charts.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Publish Status**: ${{ needs.publish-charts.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "📂 **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "�🏭 **Registry**: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "ℹ️  **Note**: Charts were built but not published (not on main branch)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "### Installation Instructions" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To install any chart from your registry:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "helm install my-release oci://${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/CHART_NAME" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
