@@ -59,7 +59,7 @@ jobs:
 
       - name: Package Helm chart
         run: |
-          chart_path="bitnami-chart-${{ steps.chart-info.outputs.path }}"
+          chart_path="${{ steps.chart-info.outputs.path }}"
           helm dependency update "$chart_path"
           helm package "$chart_path" --destination ./packages
 
@@ -104,7 +104,7 @@ jobs:
       - name: Extract chart info
         id: chart-info
         run: |
-          chart_path="${{ matrix.chart }}"
+          chart_path="bitnami/${{ matrix.chart }}"
           chart_name=$(basename "$chart_path")
           chart_version=$(yq eval '.version' "$chart_path/Chart.yaml")
           app_version=$(yq eval '.appVersion' "$chart_path/Chart.yaml")
@@ -145,7 +145,7 @@ jobs:
           registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}"
           
           # Push the packaged chart
-          helm push "./packages/$chart_name-$chart_version.tgz" "oci://$registry_url"
+          helm push "./packages/${{ steps.chart-info.outputs.name }}-$chart_version.tgz" "oci://$registry_url/$chart_name"
 
       - name: Update chart annotation
         if: steps.check-version.outputs.exists == 'false'
