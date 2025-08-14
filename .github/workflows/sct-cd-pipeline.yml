@@ -117,7 +117,7 @@ jobs:
       - name: Check if chart version already exists
         id: check-version
         run: |
-          chart_name="${{ steps.chart-info.outputs.name }}"
+          chart_name="bitnami-chart-${{ steps.chart-info.outputs.name }}"
           chart_version="${{ steps.chart-info.outputs.version }}"
           registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/$chart_name"
           
@@ -150,7 +150,7 @@ jobs:
       - name: Update chart annotation
         if: steps.check-version.outputs.exists == 'false'
         run: |
-          chart_name="${{ steps.chart-info.outputs.name }}"
+          chart_name="bitnami-chart-${{ steps.chart-info.outputs.name }}"
           registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/$chart_name"
           
           echo "✅ Published: $chart_name"
