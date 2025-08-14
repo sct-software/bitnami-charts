@@ -79,7 +79,7 @@ jobs:
   publish-charts:
     needs: [setup, build-charts]
     runs-on: ubuntu-latest
-    #if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
         chart: ${{ fromJson(needs.setup.outputs.charts) }}
