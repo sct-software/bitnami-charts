@@ -14,28 +14,11 @@ env:
   REGISTRY_NAMESPACE: ${{ github.repository_owner }}
 
 jobs:
-  discover-charts:
-    runs-on: ubuntu-latest
-    outputs:
-      charts: ${{ steps.list-charts.outputs.charts }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: List changed charts
-        id: list-charts
-        run: |
-          # Find all charts in the bitnami directory
-          charts=$(find bitnami -name "Chart.yaml" -exec dirname {} \; | sort | jq -R -s -c 'split("\n")[:-1]')
-          echo "charts=$charts" >> $GITHUB_OUTPUT
-          echo "Found charts: $charts"
-
   build-charts:
-    needs: discover-charts
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        chart: ${{ fromJson(needs.discover-charts.outputs.charts) }}
+        chart: ["bitnami/postgresql", "bitnami/redis-cluster", "bitnami/minio"]
       fail-fast: false
       max-parallel: 5
     outputs:
