@@ -27,9 +27,61 @@ jobs:
           echo "charts=$charts" >> $GITHUB_OUTPUT
           echo "Found charts: $charts"
 
-  build-and-publish:
+  build-charts:
     needs: discover-charts
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        chart: ${{ fromJson(needs.discover-charts.outputs.charts) }}
+      fail-fast: false
+      max-parallel: 5
+    outputs:
+      charts-built: ${{ steps.set-outputs.outputs.charts-built }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: '3.14.0'
+
+      - name: Extract chart info
+        id: chart-info
+        run: |
+          chart_path="${{ matrix.chart }}"
+          chart_name=$(basename "$chart_path")
+          chart_version=$(yq eval '.version' "$chart_path/Chart.yaml")
+          app_version=$(yq eval '.appVersion' "$chart_path/Chart.yaml")
+          
+          echo "name=$chart_name" >> $GITHUB_OUTPUT
+          echo "version=$chart_version" >> $GITHUB_OUTPUT
+          echo "app-version=$app_version" >> $GITHUB_OUTPUT
+          echo "path=$chart_path" >> $GITHUB_OUTPUT
+
+      - name: Package Helm chart
+        run: |
+          chart_path="${{ steps.chart-info.outputs.path }}"
+          helm dependency update "$chart_path"
+          helm package "$chart_path" --destination ./packages
+
+      - name: Upload chart package
+        uses: actions/upload-artifact@v4
+        with:
+          name: chart-${{ steps.chart-info.outputs.name }}
+          path: ./packages/${{ steps.chart-info.outputs.name }}-${{ steps.chart-info.outputs.version }}.tgz
+          retention-days: 1
+
+      - name: Set outputs for built charts
+        id: set-outputs
+        run: |
+          echo "charts-built=true" >> $GITHUB_OUTPUT
+          echo "Built chart: ${{ steps.chart-info.outputs.name }}"
+
+  publish-charts:
+    needs: [discover-charts, build-charts]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
         chart: ${{ fromJson(needs.discover-charts.outputs.charts) }}
@@ -77,15 +129,15 @@ jobs:
             echo "Chart $chart_name:$chart_version already exists, skipping..."
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Chart $chart_name:$chart_version does not exist, will build..."
+            echo "Chart $chart_name:$chart_version does not exist, will publish..."
           fi
 
-      - name: Package Helm chart
+      - name: Download chart package
         if: steps.check-version.outputs.exists == 'false'
-        run: |
-          chart_path="${{ steps.chart-info.outputs.path }}"
-          helm dependency update "$chart_path"
-          helm package "$chart_path" --destination ./packages
+        uses: actions/download-artifact@v4
+        with:
+          name: chart-${{ steps.chart-info.outputs.name }}
+          path: ./packages
 
       - name: Push chart to registry
         if: steps.check-version.outputs.exists == 'false'
@@ -108,7 +160,7 @@ jobs:
           echo "🏷️  Version: ${{ steps.chart-info.outputs.version }}"
 
   summary:
-    needs: [discover-charts, build-and-publish]
+    needs: [discover-charts, build-charts, publish-charts]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -118,8 +170,15 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📅 **Date**: $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "📊 **Total Charts**: $(echo '${{ needs.discover-charts.outputs.charts }}' | jq length)" >> $GITHUB_STEP_SUMMARY
-          echo "🏭 **Registry**: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}" >> $GITHUB_STEP_SUMMARY
+          echo "�️  **Build Status**: ${{ needs.build-charts.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Publish Status**: ${{ needs.publish-charts.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "📂 **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "�🏭 **Registry**: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            echo "ℹ️  **Note**: Charts were built but not published (not on main branch)" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "### Installation Instructions" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "To install any chart from your registry:" >> $GITHUB_STEP_SUMMARY
