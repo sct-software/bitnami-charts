@@ -145,7 +145,7 @@ jobs:
           registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/bitnami-chart"
           
           # Push the packaged chart
-          helm push "./packages/${{ steps.chart-info.outputs.name }}-$chart_version.tgz" "oci://$registry_url" --version "$chart_version"
+          helm push "./packages/${{ steps.chart-info.outputs.name }}-$chart_version.tgz" "oci://$registry_url"
 
       - name: Update chart annotation
         if: steps.check-version.outputs.exists == 'false'
