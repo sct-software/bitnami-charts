@@ -117,9 +117,9 @@ jobs:
       - name: Check if chart version already exists
         id: check-version
         run: |
-          chart_name="bitnami-chart-${{ steps.chart-info.outputs.name }}"
+          chart_name="${{ steps.chart-info.outputs.name }}"
           chart_version="${{ steps.chart-info.outputs.version }}"
-          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/$chart_name"
+          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/bitnami-chart"
           
           # Check if this version already exists
           if helm show chart "oci://$registry_url" --version "$chart_version" >/dev/null 2>&1; then
@@ -140,18 +140,18 @@ jobs:
       - name: Push chart to registry
         if: steps.check-version.outputs.exists == 'false'
         run: |
-          chart_name="bitnami-chart-${{ steps.chart-info.outputs.name }}"
+          chart_name="${{ steps.chart-info.outputs.name }}"
           chart_version="${{ steps.chart-info.outputs.version }}"
-          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}"
+          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/bitnami-chart"
           
           # Push the packaged chart
-          helm push "./packages/${{ steps.chart-info.outputs.name }}-$chart_version.tgz" "oci://$registry_url/$chart_name"
+          helm push "./packages/${{ steps.chart-info.outputs.name }}-$chart_version.tgz" "oci://$registry_url" --version "$chart_version"
 
       - name: Update chart annotation
         if: steps.check-version.outputs.exists == 'false'
         run: |
-          chart_name="bitnami-chart-${{ steps.chart-info.outputs.name }}"
-          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/$chart_name"
+          chart_name="${{ steps.chart-info.outputs.name }}"
+          registry_url="${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/bitnami-chart"
           
           echo "✅ Published: $chart_name"
           echo "📦 Registry: oci://$registry_url"
