@@ -23,7 +23,7 @@ jobs:
       - name: Set charts list
         id: set-charts
         run: |
-          echo 'charts=["bitnami/postgresql", "bitnami/redis-cluster", "bitnami/minio"]' >> $GITHUB_OUTPUT
+          echo 'charts=["postgresql", "redis-cluster", "minio"]' >> $GITHUB_OUTPUT
 
   build-charts:
     needs: setup
@@ -47,7 +47,7 @@ jobs:
       - name: Extract chart info
         id: chart-info
         run: |
-          chart_path="${{ matrix.chart }}"
+          chart_path="bitnami/${{ matrix.chart }}"
           chart_name=$(basename "$chart_path")
           chart_version=$(yq eval '.version' "$chart_path/Chart.yaml")
           app_version=$(yq eval '.appVersion' "$chart_path/Chart.yaml")
