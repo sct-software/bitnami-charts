@@ -1,8 +1,17 @@
 # Changelog
 
-## 25.1.0 (2025-08-14)
+## 25.1.2 (2025-08-20)
 
-* [bitnami/keycloak] feat: add parameter to enable HTTP endpoint ([#35881](https://github.com/bitnami/charts/pull/35881))
+* [bitnami/keycloak] :zap: :arrow_up: Update dependency references ([#36151](https://github.com/bitnami/charts/pull/36151))
+
+## <small>25.1.1 (2025-08-19)</small>
+
+* [bitnami/keycloak] docs: remove reference to deprecated parameter on README (#36095) ([88de5cf](https://github.com/bitnami/charts/commit/88de5cfe0cda1f49d53b1ba8cda84b0baada6676)), closes [#36095](https://github.com/bitnami/charts/issues/36095)
+* [bitnami/keycloak] Fix trailing dash in Config CLI Job (#35784) ([aff4631](https://github.com/bitnami/charts/commit/aff46317d0a8a86a4e5eb1d91bc384ff4ea2c42b)), closes [#35784](https://github.com/bitnami/charts/issues/35784)
+
+## 25.1.0 (2025-08-15)
+
+* [bitnami/keycloak] feat: add parameter to enable HTTP endpoint (#35881) ([90b385c](https://github.com/bitnami/charts/commit/90b385cfee09574633fe229881a000a088ef986c)), closes [#35881](https://github.com/bitnami/charts/issues/35881)
 
 ## <small>25.0.2 (2025-08-12)</small>
 
