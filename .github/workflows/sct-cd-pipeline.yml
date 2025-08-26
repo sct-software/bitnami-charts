@@ -23,7 +23,7 @@ jobs:
       - name: Set charts list
         id: set-charts
         run: |
-          echo 'charts=["postgresql", "redis-cluster", "minio"]' >> $GITHUB_OUTPUT
+          echo 'charts=["postgresql", "redis-cluster", "minio", "common"]' >> $GITHUB_OUTPUT
 
   build-charts:
     needs: setup
