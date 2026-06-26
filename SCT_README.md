@@ -103,8 +103,11 @@ flowchart LR
 Currently configured to build these charts:
 
 - `postgresql`
-- `redis-cluster`
 - `minio`
+
+> Note: `redis-cluster` was retired in INF-152. SCT migrated off the Bitnami Redis cluster
+> to the self-hosted CloudPirates HA `redis` chart (pulled directly from the upstream
+> CloudPirates OCI registry, not this fork). See INF-140 / INF-152.
 
 ### Jobs Breakdown
 
@@ -115,7 +118,7 @@ flowchart TD
     A[Setup Job] --> B[Set Charts List]
     B --> C[Output Matrix]
     
-    C --> D["['postgresql', 'redis-cluster', 'minio']"]
+    C --> D["['postgresql', 'minio']"]
 ```
 
 #### 2. Build Charts Job
@@ -123,11 +126,9 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Matrix Strategy] --> B[PostgreSQL]
-    A --> C[Redis Cluster]
     A --> D[MinIO]
     
     B --> E[Extract Chart Info]
-    C --> E
     D --> E
     
     E --> F[Update Dependencies]
@@ -277,7 +278,6 @@ echo $GITHUB_TOKEN | helm registry login ghcr.io -u $GITHUB_USERNAME --password-
 
 # Install a chart
 helm install my-postgresql oci://ghcr.io/sct-software/bitnami-chart/postgresql
-helm install my-redis oci://ghcr.io/sct-software/bitnami-chart/redis-cluster
 helm install my-minio oci://ghcr.io/sct-software/bitnami-chart/minio
 ```
 
